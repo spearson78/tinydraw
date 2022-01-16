@@ -26,6 +26,13 @@ func (d *testDisplay) Size() (x, y int16) {
 func (d *testDisplay) SetPixel(x, y int16, c color.RGBA) {
 	d.Set(int(x), int(y), c)
 }
+func (d *testDisplay) FillRect(x, y, w, h int16, c color.RGBA) {
+	for py := y; py < y+h; py++ {
+		for px := x; px < x+w; px++ {
+			d.SetPixel(px, py, c)
+		}
+	}
+}
 
 func newTestDisplay() testDisplay {
 	i := image.NewRGBA(image.Rect(0, 0, 320, 240))
@@ -75,9 +82,15 @@ func compareWithReference(name string, d testDisplay) error {
 			refR, refG, refB, refA := refPixel.RGBA()
 			testR, testG, testB, testA := testPixel.RGBA()
 
+			diffColor := color.RGBA{255, 0, 0, 255}
+
+			if refA == 0 { //Pixel is blank in reference
+				diffColor = color.RGBA{0, 0, 255, 255}
+			}
+
 			if refR != testR || refG != testG || refB != testB || refA != testA {
 				differenceDetected = true
-				d.RGBA.Set(x, y, color.RGBA{255, 0, 0, 255}) //Mark the pixel as bad for debugging
+				d.RGBA.Set(x, y, diffColor) //Mark the pixel as bad for debugging
 			}
 		}
 	}
@@ -105,7 +118,9 @@ func TestFilledTriangleClockMinuteHand(t *testing.T) {
 
 	black := color.RGBA{0, 0, 0, 255}
 	unfilledDisplay := newTestDisplay()
+	unfilledExDisplay := newTestDisplay()
 	filledDisplay := newTestDisplay()
+	filledExDisplay := newTestDisplay()
 
 	x := int16(160)
 	y := int16(120)
@@ -131,8 +146,14 @@ func TestFilledTriangleClockMinuteHand(t *testing.T) {
 		y2 := y - int16(minuteRadius*my)
 
 		FilledTriangle(
-
 			&filledDisplay,
+			x0, y0,
+			x1, y1,
+			x2, y2,
+			black)
+
+		FilledTriangleEx(
+			&filledExDisplay,
 			x0, y0,
 			x1, y1,
 			x2, y2,
@@ -140,6 +161,13 @@ func TestFilledTriangleClockMinuteHand(t *testing.T) {
 
 		Triangle(
 			&unfilledDisplay,
+			x0, y0,
+			x1, y1,
+			x2, y2,
+			black)
+
+		TriangleEx(
+			&unfilledExDisplay,
 			x0, y0,
 			x1, y1,
 			x2, y2,
@@ -153,10 +181,21 @@ func TestFilledTriangleClockMinuteHand(t *testing.T) {
 		t.Errorf("Fail %v", err)
 	}
 
+	err = compareWithReference("TestFilledTriangleClockMinuteHand", filledExDisplay)
+	if err != nil {
+		t.Errorf("Fail Ex %v", err)
+	}
+
 	err = compareWithReference("TestTriangleClockMinuteHand", unfilledDisplay)
 	if err != nil {
 		t.Errorf("Fail %v", err)
 	}
+
+	err = compareWithReference("TestTriangleClockMinuteHand", unfilledExDisplay)
+	if err != nil {
+		t.Errorf("Fail Ex %v", err)
+	}
+
 }
 
 type triangleTest struct {
@@ -210,6 +249,19 @@ func TestTriangles(t *testing.T) {
 			t.Errorf("Fail %v", err)
 		}
 
+		unfilledExDisplay := newTestDisplay()
+		TriangleEx(&unfilledExDisplay, test.x0, test.y0, test.x1, test.y1, test.x2, test.y2, colors[0])
+		TriangleEx(&unfilledExDisplay, test.x0, test.y0, test.x2, test.y2, test.x1, test.y1, colors[1])
+		TriangleEx(&unfilledExDisplay, test.x1, test.y1, test.x0, test.y0, test.x2, test.y2, colors[2])
+		TriangleEx(&unfilledExDisplay, test.x1, test.y1, test.x2, test.y2, test.x0, test.y0, colors[3])
+		TriangleEx(&unfilledExDisplay, test.x2, test.y2, test.x0, test.y0, test.x1, test.y1, colors[4])
+		TriangleEx(&unfilledExDisplay, test.x2, test.y2, test.x1, test.y1, test.x0, test.y0, colors[5])
+
+		err = compareWithReference(fmt.Sprintf("TestTriangles_%v", test.name), unfilledDisplay)
+		if err != nil {
+			t.Errorf("Fail Ex %v", err)
+		}
+
 		filledDisplay := newTestDisplay()
 
 		//Test all permutations of coordinates
@@ -223,6 +275,21 @@ func TestTriangles(t *testing.T) {
 		err = compareWithReference(fmt.Sprintf("TestTriangles_%v_Filled", test.name), filledDisplay)
 		if err != nil {
 			t.Errorf("Fail %v", err)
+		}
+
+		filledExDisplay := newTestDisplay()
+
+		//Test all permutations of coordinates
+		FilledTriangleEx(&filledExDisplay, test.x0, test.y0, test.x1, test.y1, test.x2, test.y2, colors[0])
+		FilledTriangleEx(&filledExDisplay, test.x0, test.y0, test.x2, test.y2, test.x1, test.y1, colors[1])
+		FilledTriangleEx(&filledExDisplay, test.x1, test.y1, test.x0, test.y0, test.x2, test.y2, colors[2])
+		FilledTriangleEx(&filledExDisplay, test.x1, test.y1, test.x2, test.y2, test.x0, test.y0, colors[3])
+		FilledTriangleEx(&filledExDisplay, test.x2, test.y2, test.x0, test.y0, test.x1, test.y1, colors[4])
+		FilledTriangleEx(&filledExDisplay, test.x2, test.y2, test.x1, test.y1, test.x0, test.y0, colors[5])
+
+		err = compareWithReference(fmt.Sprintf("TestTriangles_%v_Filled", test.name), filledExDisplay)
+		if err != nil {
+			t.Errorf("Fail Ex %v", err)
 		}
 	}
 }
@@ -255,6 +322,15 @@ func TestRectangles(t *testing.T) {
 			t.Errorf("Fail %v", err)
 		}
 
+		unfilledExDisplay := newTestDisplay()
+
+		RectangleEx(&unfilledExDisplay, test.x, test.y, test.w, test.h, black)
+
+		err = compareWithReference(fmt.Sprintf("TestRectangles_%v", test.name), unfilledExDisplay)
+		if err != nil {
+			t.Errorf("Fail Ex %v", err)
+		}
+
 		filledDisplay := newTestDisplay()
 
 		//Test all permutations of coordinates
@@ -263,6 +339,16 @@ func TestRectangles(t *testing.T) {
 		err = compareWithReference(fmt.Sprintf("TestRectangles_%v_Filled", test.name), filledDisplay)
 		if err != nil {
 			t.Errorf("Fail %v", err)
+		}
+
+		filledExDisplay := newTestDisplay()
+
+		//Test all permutations of coordinates
+		FilledRectangleEx(&filledExDisplay, test.x, test.y, test.w, test.h, black)
+
+		err = compareWithReference(fmt.Sprintf("TestRectangles_%v_Filled", test.name), filledExDisplay)
+		if err != nil {
+			t.Errorf("Fail Ex %v", err)
 		}
 	}
 }
