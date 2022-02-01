@@ -90,7 +90,7 @@ func compareWithReference(name string, d testDisplay) error {
 		}
 
 		err = png.Encode(saveImgFile, d.RGBA)
-		return fmt.Errorf("Image contains differences see %v" + diffFilePath)
+		return fmt.Errorf("Image contains differences see %v", diffFilePath)
 	}
 
 	return nil
@@ -221,6 +221,46 @@ func TestTriangles(t *testing.T) {
 		FilledTriangle(&filledDisplay, test.x2, test.y2, test.x1, test.y1, test.x0, test.y0, colors[5])
 
 		err = compareWithReference(fmt.Sprintf("TestTriangles_%v_Filled", test.name), filledDisplay)
+		if err != nil {
+			t.Errorf("Fail %v", err)
+		}
+	}
+}
+
+type rectangleTest struct {
+	name string
+	x    int16
+	y    int16
+	w    int16
+	h    int16
+}
+
+func TestRectangles(t *testing.T) {
+	tests := []rectangleTest{
+		{"20x20", 10, 10, 20, 20},
+		{"1x20", 10, 10, 1, 20},
+		{"20x1", 10, 10, 20, 1},
+	}
+
+	black := color.RGBA{0, 0, 0, 255}
+
+	for _, test := range tests {
+
+		unfilledDisplay := newTestDisplay()
+
+		Rectangle(&unfilledDisplay, test.x, test.y, test.w, test.h, black)
+
+		err := compareWithReference(fmt.Sprintf("TestRectangles_%v", test.name), unfilledDisplay)
+		if err != nil {
+			t.Errorf("Fail %v", err)
+		}
+
+		filledDisplay := newTestDisplay()
+
+		//Test all permutations of coordinates
+		FilledRectangle(&filledDisplay, test.x, test.y, test.w, test.h, black)
+
+		err = compareWithReference(fmt.Sprintf("TestRectangles_%v_Filled", test.name), filledDisplay)
 		if err != nil {
 			t.Errorf("Fail %v", err)
 		}
